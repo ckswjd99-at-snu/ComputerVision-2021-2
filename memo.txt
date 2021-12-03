@@ -1,0 +1,8 @@
+토라도라는 max_hierarchy 2로 잘 먹힘
+원펀맨은 max_hierarchy 3으로 잘 먹힘
+
+이런 design parameter에 따라 인식 성공률이 달라짐
+
+
+사용해보기에서는 진짜 기깔나게 잘 읽어내는데 여기서는 잘 못 읽음. 왜일까.
+google vision request 보낼때 DOCUMENT_TEXT_DETECTION 말고 TEXT_DETECTION 으로 보내보고 싶음

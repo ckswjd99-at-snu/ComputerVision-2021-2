@@ -1,5 +1,6 @@
 import numpy as np
 import cv2
+import pickle
 
 def pad_black(image):
     padded = np.pad(image, 1, mode='constant', constant_values=0)
@@ -112,3 +113,99 @@ def nine_points(box):
         (x, y+h/2), (x+w/2, y+h/2), (x+w, y+h/2),
         (x, y+h), (x+w/2, y+h), (x+w, y+h),
     ]
+
+def pickle_print(path):
+    with open(path, 'rb') as fr:
+        data = pickle.load(fr)
+    print(data)
+
+def contour_inside(outer, inner):
+    if outer is None or inner is None:
+        return False
+    for point in inner:
+        if cv2.pointPolygonTest(outer, (int(point[0][0]), int(point[0][1])), False) < 0:
+            return False
+    return True
+
+def contour_same(cnt1, cnt2, error = 1):
+    # length check
+    if len(cnt1) != len(cnt2):
+        return False
+    
+    # points check
+    for i in range(len(cnt1)):
+        p1 = np.array([cnt1[i][0][0], cnt1[i][0][1]])
+        p2 = np.array([cnt2[i][0][0], cnt2[i][0][1]])
+        if np.linalg.norm(p1 - p2) > error:
+            return False
+    
+    return True
+
+
+def reduce_overlap_contour(contours):
+    contour_mask = [True for c in contours]
+    for i in range(len(contours)):
+        if contours[i] is None:
+            contour_mask[i] = False
+            continue
+        for j in range(len(contours)):
+            if i == j:
+                continue
+            if contours[j] is None:
+                continue
+            if contour_inside(contours[i], contours[j]):
+                contour_mask[j] = False
+    contour_alive = []
+    for i in range(len(contours)):
+        if contour_mask[i]:
+            contour_alive.append(contours[i])
+
+    return contour_alive
+
+def reduce_same_contour(contours):
+    mask = [True for c in contours]
+    for i in range(len(contours)):
+        if contours[i] is None:
+            mask[i] = False
+            continue
+        for j in range(i+1, len(contours)):
+            if mask[j] == False or contours[j] is None:
+                mask[j] = False
+                continue
+            if contour_same(contours[i], contours[j]):
+                mask[j] = False
+    
+    result = []
+    for i in range(len(contours)):
+        if mask[i]:
+            result.append(contours[i])
+
+    return result
+
+
+def box_inside_contour(contour, box, thres = 6):
+    containing = 0
+    points = nine_points(box)
+    for p in points:
+        if contour is None:
+            return False
+        if cv2.pointPolygonTest(contour, p, False) >= 0:
+            containing += 1
+    return containing > thres
+
+from PIL import ImageFont, ImageDraw, Image
+def write_text(image, contours, box_list, text_list):
+    result_image = image.copy()
+
+    for i in range(len(box_list)):
+        box = box_list[i]
+        text = text_list[i]
+        center = [int(box[0] + box[2]/2), int(box[1] + box[3]/2)]
+
+        cv2.putText(result_image, text, center, cv2.FONT_HERSHEY_COMPLEX, 1, (0, 0, 0))
+    
+    # show_image(result_image)
+
+
+if __name__ == "__main__":
+    pickle_print('./ocr_result.pickle')
