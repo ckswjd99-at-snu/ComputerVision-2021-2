@@ -101,3 +101,14 @@ def contour_is_treelike(contours, thres):
         result.append(treelike)
         
     return result
+
+def nine_points(box):
+    x = box[0]
+    y = box[1]
+    w = box[2]
+    h = box[3]
+    return [
+        (x, y), (x+w/2, y), (x+w, y),
+        (x, y+h/2), (x+w/2, y+h/2), (x+w, y+h/2),
+        (x, y+h), (x+w/2, y+h), (x+w, y+h),
+    ]
