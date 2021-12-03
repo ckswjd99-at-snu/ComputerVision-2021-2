@@ -10,9 +10,15 @@ def show_image(image):
     cv2.waitKey(0)
     cv2.destroyAllWindows()
 
-def make_mask(image, contour):
-    blank = np.zeros(image.shape)
-    blank = cv2.fillPoly(image, contour, 1)
+def make_mask(image, contour, high=1):
+    blank = np.zeros(image.shape, np.uint8)
+    blank = cv2.fillPoly(blank, [contour], high)
+    return blank
+
+def make_masks(image, contours, high=1):
+    blank = np.zeros(image.shape, np.uint8)
+    for cnt in contours:
+        blank = cv2.fillPoly(blank, [cnt], high)
     return blank
 
 def enlarge_black(image, size):
@@ -37,3 +43,61 @@ def hierarchy_height(hierarchy, index):
         max_height = max(max_height, hierarchy_height(hierarchy, c))
     
     return max_height + 1
+
+def reduce_frag(image, min_width, min_height, min_area):
+    result_image = image.copy()
+    contours, [hierarchy] = cv2.findContours(image, cv2.RETR_TREE, cv2.CHAIN_APPROX_NONE)
+    for cnt in contours:
+        x, y, w, h = cv2.boundingRect(cnt)
+        area = cv2.contourArea(cnt)
+        if w > min_width or h > min_height or area > min_area:
+            continue
+        mean_color = 255 if cv2.mean(image, mask=make_mask(image, cnt, 255))[0] > 127 else 0
+        result_image = cv2.fillPoly(result_image, [cnt], 255-mean_color)
+    return result_image
+
+def reduce_treelike(image, thres):
+    result_image = image.copy()
+    debug_image = cv2.cvtColor(result_image, cv2.COLOR_GRAY2BGR)
+    contours, [hierarchy] = cv2.findContours(image, cv2.RETR_TREE, cv2.CHAIN_APPROX_NONE)
+    for cnt in contours:
+        convex_hull = cv2.convexHull(cnt)
+        cnt_area = cv2.contourArea(cnt)
+        hull_area = cv2.contourArea(convex_hull)
+
+        treelike = cnt_area < hull_area * thres
+        cv2.drawContours(debug_image, [cnt], 0, (255, 0, 0), 1)
+        cv2.drawContours(debug_image, [convex_hull], 0, (50, 50, 255) if treelike else (50, 255, 50), 1)
+        # cv2.putText(debug_image, str(cnt_area) + ", " + str(hull_area), convex_hull[0][0], 0, 0.0005*hull_area+0.2, (255, 0, 0), 1)
+
+        if not treelike:
+            continue
+        mean_color = 255 if cv2.mean(image, mask=make_mask(image, cnt))[0] > 127 else 0
+        result_image = cv2.fillPoly(result_image, [cnt], 255-mean_color)
+        debug_image = cv2.fillPoly(debug_image, [cnt], (0, 0, 255))
+    show_image(debug_image)
+    return result_image
+
+def contour_is_frag(contours, min_width, min_height, min_area):
+    result = []
+    for cnt in contours:
+        x, y, w, h = cv2.boundingRect(cnt)
+        area = cv2.contourArea(cnt)
+        if w > min_width or h > min_height or area > min_area:
+            result.append(False)
+        else:
+            result.append(True)
+        
+    return result
+
+def contour_is_treelike(contours, thres):
+    result = []
+    for cnt in contours:
+        convex_hull = cv2.convexHull(cnt)
+        cnt_area = cv2.contourArea(cnt)
+        hull_area = cv2.contourArea(convex_hull)
+
+        treelike = cnt_area < hull_area * thres
+        result.append(treelike)
+        
+    return result
