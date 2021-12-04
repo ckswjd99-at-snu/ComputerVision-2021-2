@@ -3,6 +3,7 @@ import os
 import numpy as np
 import glob
 import math
+import json
 
 import utils
 import tempdata
@@ -25,7 +26,7 @@ def find_balloon_contour(image):
     # reduced_image = utils.reduce_frag(enlarged_image, 5, 5, 10)
     # reduced_image = utils.reduce_treelike(reduced_image, 0.7)
 
-    # utils.show_image(reduced_image)
+    # utils.show_image(enlarged_image)
 
     contours, [hierarchy] = cv2.findContours(enlarged_image, cv2.RETR_TREE, cv2.CHAIN_APPROX_SIMPLE)
     hierarchy_heights = []
@@ -125,27 +126,30 @@ for image_path in glob.glob(image_dir+'/*.PNG'):
     balloon_candi_contours = find_balloon_contour(image_gray)
     mask = utils.make_masks(image_gray, balloon_candi_contours)
     masked_image = mask * image_gray
-    # utils.show_image(masked_image)
+    utils.show_image(masked_image)
     cv2.imwrite('./temp/first_filtered/'+str(i)+".PNG", masked_image)
 
-    # continue
     text_data, para_data = ocr.gv_ocr('./temp/first_filtered/'+str(i)+".PNG")
-    text_bounding_box = ocr.bounding_boxes_from(text_data)
+    utils.write_object('./temp/ocr_result/text_'+str(i)+'.json', text_data)
+    utils.write_object('./temp/ocr_result/para_'+str(i)+'.json', para_data)
+
+    text_box, text_list = ocr.text_data_from(para_data)
+    utils.write_object('./temp/text_to_use/texts_'+str(i)+'.json', [text_box, text_list])
+
+    # text_bounding_box = ocr.bounding_boxes_from(text_data)
 
     image_with_balloon = image_orig.copy()
-    for box in text_bounding_box:
+    for box in text_box:
         cv2.rectangle(image_with_balloon, (box[0], box[1]), (box[0]+box[2], box[1]+box[3]), (50, 255, 50), 2)
-    # utils.show_image(image_with_balloon)
+    utils.show_image(image_with_balloon)
 
-    contours_bounding_box, debug_image = balloon_with_text(image_orig, balloon_candi_contours, text_bounding_box)
+    contours_bounding_box, debug_image = balloon_with_text(image_orig, balloon_candi_contours, text_box)
     cv2.imwrite('./temp/after_ocr/'+str(i)+".PNG", debug_image)
 
     contours_bounding_box = utils.reduce_same_contour(contours_bounding_box)
 
-    text_box, text_list = ocr.text_data_from(para_data)
-
     image_blank_balloon = erase_balloon(image_orig, contours_bounding_box)
-    cv2.imwrite('./temp/balloon_erased/'+str(i)+".PNG", debug_image)
+    cv2.imwrite('./temp/balloon_erased/'+str(i)+".PNG", image_blank_balloon)
 
     image_written = utils.write_text(image_blank_balloon, contours_bounding_box, text_box, text_list)
     cv2.imwrite('./temp/text_written/'+str(i)+".PNG", image_written)

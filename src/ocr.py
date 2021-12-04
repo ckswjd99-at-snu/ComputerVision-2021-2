@@ -2,11 +2,14 @@ import os
 import io
 import pickle
 import math
+import json
 
 from google.cloud import vision
-from google.cloud.vision_v1 import types
+from google.cloud.vision_v1 import types, AnnotateImageResponse
 
-os.environ["GOOGLE_APPLICATION_CREDENTIALS"]="./angelic-cat-333914-c80aeb57e21a.json"
+from utils import write_object
+
+os.environ["GOOGLE_APPLICATION_CREDENTIALS"]="./angelic-cat-333914-730a31238445.json"
 
 def gv_ocr(image_path):
     client = vision.ImageAnnotatorClient()
@@ -16,24 +19,27 @@ def gv_ocr(image_path):
     
     image = types.Image(content=content)
     response = client.document_text_detection(image=image)
-    texts = response.text_annotations
-    full_text = response.full_text_annotation
+    response = AnnotateImageResponse.to_json(response)
+    response = json.loads(response)
+    write_object('./temp/ocr_result/temp.json', response)
+    texts = response['textAnnotations']
+    full_text = response['fullTextAnnotation']
 
     return texts, full_text
 
 def bounding_boxes_from(text_data):
     boxes = []
     for data in text_data:
-        vertices = data.bounding_poly.vertices
+        vertices = data['boundingPoly']['vertices']
         min_x = math.inf
         max_x = -math.inf
         min_y = math.inf
         max_y = -math.inf
         for p in vertices:
-            min_x = min(min_x, p.x)
-            max_x = max(max_x, p.x)
-            min_y = min(min_y, p.y)
-            max_y = max(max_y, p.y)
+            min_x = min(min_x, p['x'])
+            max_x = max(max_x, p['x'])
+            min_y = min(min_y, p['y'])
+            max_y = max(max_y, p['y'])
         x = min_x
         y = min_y
         w = max_x - min_x
@@ -49,26 +55,26 @@ def vertices_to_box(vertices):
     min_y = math.inf
     max_y = -math.inf
     for v in vertices:
-        min_x = min(min_x, v.x)
-        max_x = max(max_x, v.x)
-        min_y = min(min_y, v.y)
-        max_y = max(max_y, v.y)
+        min_x = min(min_x, v['x'])
+        max_x = max(max_x, v['x'])
+        min_y = min(min_y, v['y'])
+        max_y = max(max_y, v['y'])
     return [min_x, min_y, max_x-min_x, max_y-min_y]
 
 def text_data_from(para_data):
     conf_thres = 0.8
 
-    blocks = para_data.pages[0].blocks
+    blocks = para_data['pages'][0]['blocks']
 
     box_array = []
     text_array = []
     for block in blocks:
-        paragraphs = block.paragraphs
+        paragraphs = block['paragraphs']
         for para in paragraphs:
-            para_box = vertices_to_box(para.bounding_box.vertices)
-            if para.confidence < conf_thres:
+            para_box = vertices_to_box(para['boundingBox']['vertices'])
+            if para['confidence'] < conf_thres:
                 continue
-            text = ''.join([''.join([symbol.text for symbol in word.symbols]) for word in para.words])
+            text = ''.join([''.join([symbol['text'] for symbol in word['symbols']]) for word in para['words']])
 
             box_array.append(para_box)
             text_array.append(text)

@@ -1,6 +1,8 @@
+from json import encoder
 import numpy as np
 import cv2
 import pickle
+import json
 
 def pad_black(image):
     padded = np.pad(image, 1, mode='constant', constant_values=0)
@@ -194,18 +196,88 @@ def box_inside_contour(contour, box, thres = 6):
     return containing > thres
 
 from PIL import ImageFont, ImageDraw, Image
+def get_textbox(text, width, height):
+    size = 1
+
+    font_dir = './fonts/meiryo.ttc'
+
+    while True:
+        # with size, render lines
+        # print("trying with size ", size)
+        font = ImageFont.truetype(font_dir, size)
+        line_bag = []
+        buffer = ''
+        text_left = text
+        
+        while True:
+            # add one symbol
+            buffer += text_left[0]
+            text_left = text_left[1:len(text_left)]
+            line_size = font.getsize(buffer)
+
+            # if line is full
+            if line_size[0] > width:
+                text_left = buffer[-1] + text_left
+                buffer = buffer[0:len(buffer)-1]
+                line_bag.append(buffer)
+                buffer = ''
+            
+            # if all text is traversed
+            if len(text_left) == 0:
+                if len(buffer) > 0:
+                    line_bag.append(buffer)
+                    buffer = ''
+                break
+        
+        lined_text = '\n'.join(line_bag)
+        lined_size = font.getsize(lined_text)
+        # print("now size ", lined_size[0], ", ", lined_size[1] * len(line_bag))
+        # debug_image = Image.new('RGB', (width, height))
+        # debug_drawer = ImageDraw.Draw(debug_image)
+        # debug_drawer.text((0,0), lined_text, (255, 255, 255), font)
+        # debug_image.show()
+
+        if (lined_size[1]+4) * len(line_bag) > height:
+            size -= 1
+            break
+        else:
+            size += 1
+            
+    return lined_text, size
+
+def make_box(contour):
+    x, y, w, h = cv2.boundingRect(contour)
+    bounding_box = [x + w/4, y + h/4, w/2, h/2]
+    bounding_box = [int(elem) for elem in bounding_box]
+
+    return bounding_box
+
 def write_text(image, contours, box_list, text_list):
-    result_image = image.copy()
+    result_image = Image.fromarray(image)
+    font_dir = './fonts/meiryo.ttc'
+    drawer = ImageDraw.Draw(result_image)
 
     for i in range(len(box_list)):
         box = box_list[i]
         text = text_list[i]
-        center = [int(box[0] + box[2]/2), int(box[1] + box[3]/2)]
+        [x, y, w, h] = box
+        lined_text, size = get_textbox(text, w, h)
 
-        cv2.putText(result_image, text, center, cv2.FONT_HERSHEY_COMPLEX, 1, (0, 0, 0))
+        font = ImageFont.truetype(font_dir, size)
+
+        drawer.text((x, y), lined_text, 0, font)
     
-    # show_image(result_image)
+    result_image = np.array(result_image, np.uint8)
+    show_image(result_image)
+    
+    return result_image
+
+def write_object(path, object):
+    file = open(path, 'w', encoding='utf-8')
+    td_str = json.dumps(object, ensure_ascii=False)
+    file.write(td_str)
+    file.close()
 
 
 if __name__ == "__main__":
-    pickle_print('./ocr_result.pickle')
+    get_textbox('hello this is for test man', 50, 50)
