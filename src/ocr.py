@@ -9,7 +9,7 @@ from google.cloud.vision_v1 import types, AnnotateImageResponse
 
 from utils import write_object
 
-os.environ["GOOGLE_APPLICATION_CREDENTIALS"]="./angelic-cat-333914-730a31238445.json"
+os.environ["GOOGLE_APPLICATION_CREDENTIALS"]="angelic-cat-333914-730a31238445.json"
 
 def gv_ocr(image_path):
     client = vision.ImageAnnotatorClient()

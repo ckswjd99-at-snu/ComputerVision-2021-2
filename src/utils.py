@@ -199,8 +199,9 @@ from PIL import ImageFont, ImageDraw, Image
 def get_textbox(text, width, height):
     size = 1
 
-    font_dir = './fonts/meiryo.ttc'
+    font_dir = './fonts/NanumGothic.ttf'
 
+    line_bag_before = []
     while True:
         # with size, render lines
         # print("trying with size ", size)
@@ -238,9 +239,72 @@ def get_textbox(text, width, height):
         # debug_image.show()
 
         if (lined_size[1]+4) * len(line_bag) > height:
+            lined_text = '\n'.join(line_bag_before)
             size -= 1
             break
         else:
+            line_bag_before = line_bag
+            size += 1
+            
+    return lined_text, size
+
+def get_textbox_word(text, width, height):
+    size = 1
+
+    font_dir = './fonts/NanumGothic.ttf'
+
+    words = text.split()
+
+    line_bag_before = []
+
+    while True:
+        # with size, render lines
+        # print("trying with size ", size)
+        font = ImageFont.truetype(font_dir, size)
+        line_bag = []
+        buffer = []
+        word_left = words
+
+        exception = False
+        
+        while True:
+            # if one word is larger than width
+            if font.getsize(word_left[0])[0] > width:
+                exception = True
+                break
+            # add one word
+            buffer.append(word_left[0])
+            word_left = word_left[1:len(word_left)]
+            line_size = font.getsize(' '.join(buffer))
+
+            # if line is full
+            if line_size[0] > width:
+                word_left.insert(0, buffer[-1])
+                buffer = buffer[0:len(buffer)-1]
+                line_bag.append(' '.join(buffer))
+                buffer = []
+            
+            # if all text is traversed
+            if len(word_left) == 0:
+                if len(buffer) > 0:
+                    line_bag.append(' '.join(buffer))
+                    buffer = []
+                break
+        
+        lined_text = '\n'.join(line_bag)
+        lined_size = font.getsize(lined_text)
+        # print("now size ", lined_size[0], ", ", lined_size[1] * len(line_bag))
+        # debug_image = Image.new('RGB', (width, height))
+        # debug_drawer = ImageDraw.Draw(debug_image)
+        # debug_drawer.text((0,0), lined_text, (255, 255, 255), font)
+        # debug_image.show()
+
+        if (lined_size[1]+4) * len(line_bag) > height or exception:
+            lined_text = '\n'.join(line_bag_before)
+            size -= 1
+            break
+        else:
+            line_bag_before = line_bag
             size += 1
             
     return lined_text, size
@@ -252,16 +316,16 @@ def make_box(contour):
 
     return bounding_box
 
-def write_text(image, contours, box_list, text_list):
+def write_text(image, contours, box_list, text_list, split_by_word=0):
     result_image = Image.fromarray(image)
-    font_dir = './fonts/meiryo.ttc'
+    font_dir = './fonts/NanumGothic.ttf'
     drawer = ImageDraw.Draw(result_image)
 
     for i in range(len(box_list)):
         box = box_list[i]
         text = text_list[i]
         [x, y, w, h] = box
-        lined_text, size = get_textbox(text, w, h)
+        lined_text, size = get_textbox(text, w, h) if split_by_word == 0 else get_textbox_word(text, w, h)
 
         font = ImageFont.truetype(font_dir, size)
 
@@ -280,4 +344,5 @@ def write_object(path, object):
 
 
 if __name__ == "__main__":
-    get_textbox('hello this is for test man', 50, 50)
+    textlist, size = get_textbox_word('hello this is for test man', 50, 300)
+    print(textlist, size)

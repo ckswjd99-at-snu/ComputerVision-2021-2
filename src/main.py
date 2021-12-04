@@ -8,6 +8,7 @@ import json
 import utils
 import tempdata
 import ocr
+import translate
 
 def find_balloon_contour(image):
     image = image.copy()
@@ -135,6 +136,7 @@ for image_path in glob.glob(image_dir+'/*.PNG'):
 
     text_box, text_list = ocr.text_data_from(para_data)
     utils.write_object('./temp/text_to_use/texts_'+str(i)+'.json', [text_box, text_list])
+    text_list = translate.translate_text(text_list)
 
     # text_bounding_box = ocr.bounding_boxes_from(text_data)
 
@@ -151,5 +153,5 @@ for image_path in glob.glob(image_dir+'/*.PNG'):
     image_blank_balloon = erase_balloon(image_orig, contours_bounding_box)
     cv2.imwrite('./temp/balloon_erased/'+str(i)+".PNG", image_blank_balloon)
 
-    image_written = utils.write_text(image_blank_balloon, contours_bounding_box, text_box, text_list)
+    image_written = utils.write_text(image_blank_balloon, contours_bounding_box, text_box, text_list, split_by_word=1)
     cv2.imwrite('./temp/text_written/'+str(i)+".PNG", image_written)
