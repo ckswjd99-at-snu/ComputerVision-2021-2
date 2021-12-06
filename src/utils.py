@@ -209,8 +209,14 @@ def get_textbox(text, width, height):
         line_bag = []
         buffer = ''
         text_left = text
+
+        exception = False
         
         while True:
+            # if one word is larger than width
+            if font.getsize(text_left[0])[0] > width:
+                exception = True
+                break
             # add one symbol
             buffer += text_left[0]
             text_left = text_left[1:len(text_left)]
@@ -238,7 +244,7 @@ def get_textbox(text, width, height):
         # debug_drawer.text((0,0), lined_text, (255, 255, 255), font)
         # debug_image.show()
 
-        if (lined_size[1]+4) * len(line_bag) > height:
+        if (lined_size[1]+4) * len(line_bag) > height or exception:
             lined_text = '\n'.join(line_bag_before)
             size -= 1
             break
@@ -325,7 +331,19 @@ def write_text(image, contours, box_list, text_list, split_by_word=0):
         box = box_list[i]
         text = text_list[i]
         [x, y, w, h] = box
-        lined_text, size = get_textbox(text, w, h) if split_by_word == 0 else get_textbox_word(text, w, h)
+        
+        symbol_lined_text, symbol_size = get_textbox(text, w, h)
+        word_lined_text, word_size = get_textbox_word(text, w, h)
+        
+        lined_text = []
+        size = 0
+        ratio = 1.5
+        if symbol_size / word_size > ratio:
+            lined_text = symbol_lined_text
+            size = symbol_size
+        else:
+            lined_text = word_lined_text
+            size = word_size
 
         font = ImageFont.truetype(font_dir, size)
 
