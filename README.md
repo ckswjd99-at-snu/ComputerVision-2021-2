@@ -1,6 +1,6 @@
 # comicsTextPP
 
-Project in **SNU ECE Computer Vision (430.322)** lecture, at 2021 autumn.
+Project in **SNU ECE Computer Vision (M1522.001000)** lecture, at 2021 autumn.
 
 I worked on **auto-detection of speech bubble**, using classic vision technologies.
 
